@@ -35,7 +35,7 @@ logging.basicConfig(
 # set up api
 api_key = my_apikey()
 base_url = 'https://devapi.qweather.com/v7/warning/now?'
-location_code = '101280108'  # https://github.com/qwd/LocationList/blob/master/China-City-List-latest.csv
+location_code = '101310215'  # https://github.com/qwd/LocationList/blob/master/China-City-List-latest.csv
 
 complete_url = base_url + 'location=' + location_code + '&lang=en&key=' + api_key
 
@@ -51,6 +51,19 @@ priority_levels = {
 }
 
 # restore previous record
+try:
+    with open("../record/weather_data.json", "r") as f:
+        previous_response = json.load(f)
+        if previous_response['warning']:
+            previous_warnings_id = [w['id'] for w in previous_response['warning']]
+            previous_warnings_name = [w['typeName'] for w in previous_response['warning']]
+            previous_warnings_status = [w['status'] for w in previous_response['warning']]
+            previous_warnings_color = [w['severityColor'] for w in previous_response['warning']]
+            previous_warnings_level = [w['level'] for w in previous_response['warning']]
+            previous_warnings_time = [w['startTime'] for w in previous_response['warning']]
+
+except FileNotFoundError:
+    print(">> Previous record not found..")
 
 
 # call the api
@@ -72,11 +85,14 @@ try:
         warnings_time = [w['startTime'] for w in warnings]
 
         # filter warnings with priority check
-        warning_information = ['id', 'typeName', 'status', 'color', 'time']
+        warning_information = ['tag', 'id', 'typeName', 'status', 'color', 'time']
         current_warning = {key: [] for key in warning_information}
         for i in range(0, warning_numbers):
             # check if duplicate ID
-
+            if warnings_id[i] in previous_warnings_id:
+                current_warning['tag'].append('Remain')
+            else:
+                current_warning['tag'].append('New-Issued')
             # check if duplicate warning type
             warning_type = warnings_name[i]
             # the value of warning level and warning severity color are still unstable
@@ -106,10 +122,16 @@ try:
             color = current_warning['color'][ci]
             issue_time = current_warning['time'][ci]
             issue_time = datetime.strptime(issue_time, '%Y-%m-%dT%H:%M%z')
-            print(f">> The {color} item for {name} is {status} since {issue_time.strftime('%Y-%m-%d %H:%M')}.")
+            if current_warning['tag'][ci] == 'New-Issued':
+                print(f">! [NEW WARNING] {name} warning [{color}] {status} "
+                      f"since {issue_time.strftime('%Y-%m-%d %H:%M')}.")
+            elif current_warning['tag'][ci] == 'Remain':
+                print(f">> [PERSISTING] {name} warning [{color}] since {issue_time.strftime('%Y-%m-%d %H:%M')}.")
 
-            with open("../record/weather_data.json", "w") as f:
-                json.dump(data, f)
+        # save the data
+        with open("../record/weather_data.json", "w") as f:
+            json.dump(data, f)
+
     else:
         print(">> No warnings active now.")
 
