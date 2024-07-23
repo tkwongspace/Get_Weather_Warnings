@@ -162,5 +162,8 @@ cython_debug/
 # MacOS
 ._*
 
-# Encrpted files
-apikey/
+# Private information
+private.py
+
+# Weather Icons
+QWeather-Icons-1.6.0/
