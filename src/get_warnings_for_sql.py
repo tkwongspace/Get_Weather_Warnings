@@ -71,12 +71,12 @@ def main():
             
             connection.commit()
 
-            print(">> Success in fetching warning info.")
-            print("  Update in 90 seconds...")
+            # print(">> {time.localtime(time.time())} Success in fetching warning info.")
+            # print("  Update in 90 seconds...")
 
         except Exception as e:
-            print(f">! Error in fetching warning info: {e}.")
-            print("   Retry in 90 seconds...")
+            logging.error(f">!{time.localtime(time.time())} Error in fetching warning info: {e}.")
+            # print("   Retry in 90 seconds...")
 
         finally:
             cursor.close()
