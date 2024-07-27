@@ -82,7 +82,7 @@ def main():
             cursor.close()
             connection.close()
 
-        time.sleep(90)
+        time.sleep(120)
 
 
 if __name__ == "__main__":
