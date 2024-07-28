@@ -167,3 +167,6 @@ private.py
 
 # Weather Icons
 QWeather-Icons-1.6.0/
+
+# Files no need to sync
+record/
