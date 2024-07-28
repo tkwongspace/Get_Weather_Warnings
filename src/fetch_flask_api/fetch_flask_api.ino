@@ -16,6 +16,9 @@ TFT_eSPI tft = TFT_eSPI();
 // To store the previous warnings downloaded from API
 DynamicJsonDocument prevWarnings(2048);
 
+// Define the time stamp of data fetch
+unsigned long lastFetchTime = 0;
+
 // Define the pin for the buzzer
 const int buzzerPin = 26;
 
@@ -41,6 +44,67 @@ bool compareWarnings(const JsonArray& newWarnings, const JsonArray& oldWarnings)
   }
 
   return true;
+}
+
+// Function to print free heap memory (for Debug)
+void printFreeHeap(const char* tag) {
+  Serial.print(tag);
+  Serial.print(" - Free heap: ");
+  Serial.println(ESP.getFreeHeap());
+}
+
+// Function to fetch data from API
+void fetchWarningData() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(api_url);
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+      String payload = http.getString();
+      Serial.println(payload);
+
+      // Parse JSON
+      DynamicJsonDocument doc(2048);  // increase buffer size if neccesary
+      DeserializationError error = deserializeJson(doc, payload);
+      if (error) {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.f_str());
+        return;
+      }
+
+      JsonArray newWarnings = doc.as<JsonArray>();
+
+      // Compare with previous warnings
+      if (!compareWarnings(newWarnings, prevWarnings.as<JsonArray>())) {
+        beep(); // beep if there is a new or updated warning
+      }
+
+      // Update warnings on board
+      prevWarnings = doc;
+
+      // Display warnings
+      displayWarnings(newWarnings);
+
+    } else {
+      Serial.print("Error on HTTP request: ");
+      Serial.println(httpResponseCode);
+      tft.fillScreen(TFT_BLACK);
+      tft.setCursor(0, 0);
+      tft.println("Failed to fetch data.");
+      tft.setCursor(0, 20);
+      tft.print("HTTP response code: ");
+      tft.println(httpResponseCode);
+    }
+
+    http.end();
+
+  } else {
+    Serial.println("WiFi not connected.");
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(0, 0);
+    tft.println("WiFi not connected.");
+  }
 }
 
 // Function for warnings display
@@ -123,63 +187,26 @@ void setup() {
   tft.setCursor(0, 0);
   tft.println("Connected to WiFi .");
 
-  //Display initial message
+  // Display initial message
   tft.setCursor(0, 20);
   tft.println("Fetching weather data ...");
+
+  // Print free heap after setup
+  printFreeHeap("After setup");
+
+  // Set the time of data fetch
+  lastFetchTime = millis();
+
+  // Fetch weather data immediately after connecting to Wi-Fi
+  fetchWarningData();
 }
 
 void loop() {
-  static unsigned long lastFetchTime = 0;
   unsigned long currentTime = millis();
 
   if (currentTime - lastFetchTime >= 120000) {  //fetch data every 120 seconds
     lastFetchTime = currentTime;
-
-    if (WiFi.status() == WL_CONNECTED) {
-      HTTPClient http;
-      http.begin(api_url);
-      int httpResponseCode = http.GET();
-
-      if (httpResponseCode > 0) {
-        String payload = http.getString();
-        Serial.println(payload);
-
-        // Parse JSON
-        DynamicJsonDocument doc(2048);  // increase buffer size if neccesary
-        deserializeJson(doc, payload);
-
-        JsonArray newWarnings = doc.as<JsonArray>();
-
-        // Compare with previous warnings
-        if (!compareWarnings(newWarnings, prevWarnings.as<JsonArray>())) {
-          beep(); // beep if there is a new or updated warning
-        }
-
-        // Update warnings on board
-        prevWarnings = doc;
-
-        // Display warnings
-        displayWarnings(newWarnings);
-
-      } else {
-        Serial.print("Error on HTTP request: ");
-        Serial.println(httpResponseCode);
-        tft.fillScreen(TFT_BLACK);
-        tft.setCursor(0, 0);
-        tft.println("Failed to fetch data.");
-        tft.setCursor(0, 20);
-        tft.print("HTTP response code: ");
-        tft.println(httpResponseCode);
-      }
-
-      http.end();
-      
-    } else {
-      Serial.println("WiFi not connected.");
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(0, 0);
-      tft.println("WiFi not connected.");
-    }
+    fetchWarningData();    
   }  
 
   // Countdown display
@@ -190,4 +217,7 @@ void loop() {
   tft.setTextSize(2);
   tft.printf("Update in %d seconds..", secondsLeft);
   delay(1000);
+
+  // Print free heap in loop (for Debug)
+  printFreeHeap("In loop");
 }
