@@ -43,41 +43,55 @@ bool compareWarnings(const JsonArray& newWarnings, const JsonArray& oldWarnings)
   return true;
 }
 
-// Function to scroll text
-void scrollText(const char* text, int y) {
-  int16_t x = tft.width();
-  while (x > -tft.textWidth(text)) {
-    tft.fillRect(80, y, tft.width() - 80, tft.fontHeight(), TFT_BLACK);
-    tft.setCursor(x, y);
-    tft.print(text);
-    x -= 2;
-    delay(30);  // scrolling speed
-  }
-}
-
 // Function for warnings display
 void displayWarnings(const JsonArray& warnings) {
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(0, 0);
   tft.println("Current Warnings:");
 
+  int yPos = 40;
+  bool allFieldsNull = true;
+
   for (JsonObject warning : warnings) {
     const char* typeName = warning["typename"];
     const char* mark = warning["mark"];
     const char* color = warning["color"];
 
-    // display labels
-    tft.setCursor(0, 40);
-    tft.print("Type: ");
-    tft.setCursor(0, 80);
-    tft.print("Severity: ");
-    tft.setCursor(0, 120);
-    tft.print("Status: ");
+    if (typeName != nullptr || mark != nullptr || color != nullptr) {
+      allFieldsNull = false;
 
-    // display warning information
-    scrollText(typeName, 40);
-    scrollText(color, 80);
-    scrollText(mark, 120);
+      // display labels and warning details
+      tft.setCursor(0, yPos);
+      tft.print("Type: ");
+      tft.println(typeName != nullptr ? typeName: "N/A");
+      yPos += 20;
+
+      tft.setCursor(0, yPos);
+      tft.print("Severity: ");
+      tft.println(color != nullptr ? color: "N/A");
+      yPos += 20;
+
+      tft.setCursor(0, yPos);
+      tft.print("Status: ");
+      tft.println(mark != nullptr ? mark: "N/A");
+      yPos += 40;   // add extra space between warnings
+
+      // Iy yPos exceeds the screen height, start scrolling
+      if (yPos > tft.height() - 40) {
+        tft.setCursor(0, yPos);
+        tft.println("Scrolling...");
+        delay(2000);
+        yPos = 40;
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(0, 0);
+        tft.println("Current Warnings: ");
+      }
+    }
+  }
+
+  if (allFieldsNull) {
+    tft.setCursor(0, 40);
+    tft.println("No Warning Issued Currently in Haizhu.");
   }
 }
 
@@ -101,11 +115,16 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi ...");
+    tft.setCursor(0, 0);
+    tft.println("Connecting to WiFi ...");
   }
   Serial.println("Connected to WiFi.");
+  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0);
+  tft.println("Connected to WiFi .");
 
   //Display initial message
-  tft.setCursor(0, 0);
+  tft.setCursor(0, 20);
   tft.println("Fetching weather data ...");
 }
 
@@ -140,15 +159,21 @@ void loop() {
         prevWarnings = doc;
 
         // Display warnings
-        displayWarnings(newWarnings);    
+        displayWarnings(newWarnings);
+
       } else {
         Serial.print("Error on HTTP request: ");
         Serial.println(httpResponseCode);
         tft.fillScreen(TFT_BLACK);
         tft.setCursor(0, 0);
         tft.println("Failed to fetch data.");
+        tft.setCursor(0, 20);
+        tft.print("HTTP response code: ");
+        tft.println(httpResponseCode);
       }
+
       http.end();
+      
     } else {
       Serial.println("WiFi not connected.");
       tft.fillScreen(TFT_BLACK);
