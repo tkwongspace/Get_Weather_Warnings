@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Weather_Warnings" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Weather_Warnings" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="weather_api" project-jdk-type="Python SDK" />
 </project>
