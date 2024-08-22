@@ -1,4 +1,6 @@
-# Save this as get_weather_warning.py
+# Download and write current issued warnings to SQL database.
+# Great appreciation to QWeather API.
+
 import pymysql
 import time
 from toolbox import *
